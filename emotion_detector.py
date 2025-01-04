@@ -34,6 +34,7 @@ def get_quote(emotion, quotes_dict):
     if emotion in quotes_dict and quotes_dict[emotion]:
         return random.choice(quotes_dict[emotion])
     return "You are amazing!"  # Default quote
+
 def open_captures_directory():
     """Open the 'captures' directory in the default file explorer."""
     captures_path = os.path.abspath("captures")
@@ -43,6 +44,72 @@ def open_captures_directory():
         subprocess.run(["open", captures_path])
     else:  # Linux/Other
         subprocess.run(["xdg-open", captures_path])
+
+def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255)):
+    """Draw text with a semi-transparent background."""
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    text_size = cv2.getTextSize(text, font, font_scale, 1)[0]
+    text_x, text_y = position
+    box_coords = ((text_x, text_y + 5), (text_x + text_size[0] + 10, text_y - text_size[1] - 5))
+    cv2.rectangle(frame, box_coords[0], box_coords[1], (0, 0, 0), cv2.FILLED)
+    cv2.putText(frame, text, (text_x + 5, text_y), font, font_scale, color, 1, cv2.LINE_AA)
+
+
+def draw_wrapped_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255), max_width=400):
+    """
+    Draws wrapped text with a semi-transparent background.
+    :param frame: OpenCV image frame.
+    :param text: Text to display.
+    :param position: Starting (x, y) position of the text.
+    :param font_scale: Font scale.
+    :param color: Text color.
+    :param max_width: Maximum width before wrapping text.
+    """
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    words = text.split(' ')
+    lines = []
+    current_line = ''
+
+    for word in words:
+        test_line = f"{current_line} {word}".strip()
+        text_size = cv2.getTextSize(test_line, font, font_scale, 1)[0]
+        if text_size[0] > max_width:
+            lines.append(current_line)
+            current_line = word
+        else:
+            current_line = test_line
+    lines.append(current_line)
+
+    x, y = position
+    for line in lines:
+        text_size = cv2.getTextSize(line, font, font_scale, 1)[0]
+        box_coords = ((x, y + 5), (x + text_size[0] + 10, y - text_size[1] - 5))
+        cv2.rectangle(frame, box_coords[0], box_coords[1], (0, 0, 0), cv2.FILLED)
+        cv2.putText(frame, line, (x + 5, y), font, font_scale, color, 1, cv2.LINE_AA)
+        y += text_size[1] + 10
+
+
+def draw_face_box_and_emotions(frame, analysis):
+    """Draw face bounding box and display emotion characteristics."""
+    for face in analysis:
+        region = face.get('region', None)
+        if region:
+            x, y, w, h = region['x'], region['y'], region['w'], region['h']
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+            # Display dominant emotion
+            dominant_emotion = face.get('dominant_emotion', 'unknown')
+            draw_text_with_background(frame, f"Emotion: {dominant_emotion}", (x, y - 10), 0.7, (0, 255, 0))
+
+            # Display emotion percentages
+            emotions = face.get('emotion', {})
+            sorted_emotions = sorted(emotions.items(), key=lambda x: x[1], reverse=True)
+
+            y_offset = y + h + 20
+            for emotion, score in sorted_emotions[:5]:
+                draw_text_with_background(frame, f"{emotion.capitalize()}: {score:.1f}%", (x, y_offset), 0.6)
+                y_offset += 30
+
 
 def main():
     quotes = load_quotes()
@@ -76,21 +143,18 @@ def main():
                     if isinstance(analysis, list):
                         analysis = analysis[0]
 
+                    draw_face_box_and_emotions(frame, [analysis])
+
                     dominant_emotion = analysis.get('dominant_emotion', 'unknown')
-                    print(f"Detected Emotion: {dominant_emotion}")
-
                     quote = get_quote(dominant_emotion, quotes)
-                    cv2.putText(frame, f"Emotion: {dominant_emotion}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
-                                (255, 255, 255), 2, cv2.LINE_AA)
-                    cv2.putText(frame, quote, (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
 
+                    draw_wrapped_text_with_background(frame, quote, (10, 40), 0.8, (0, 255, 255), max_width=frame.shape[1] - 20)
                     cv2.imshow("Emotion Detector", frame)
-                    cv2.waitKey(3000)
+                    cv2.waitKey(5000)
 
                 except Exception as e:
                     print(f"Error detecting emotion: {e}")
-                    cv2.putText(frame, "Error detecting emotion", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2,
-                                cv2.LINE_AA)
+                    draw_text_with_background(frame, "Error detecting emotion", (10, 30), 0.8, (0, 0, 255))
                     cv2.imshow("Emotion Detector", frame)
                     cv2.waitKey(3000)
 
