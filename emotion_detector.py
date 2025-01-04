@@ -168,5 +168,53 @@ def main():
         open_captures_directory()
 
 
+
+if __name__ == "__main__":
+    main()
+
+
+
+# Identificarea camerei pentru loading UI
+
+SIGNAL_FILE = "camera_ready.signal"
+
+def main():
+    # Ensure the signal file is removed before starting
+    if os.path.exists(SIGNAL_FILE):
+        os.remove(SIGNAL_FILE)
+
+    cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Error: Could not open the camera.")
+        return
+
+    # Create the signal file to notify that the camera is ready
+    with open(SIGNAL_FILE, "w") as f:
+        f.write("Camera is ready")
+
+    cv2.namedWindow("Emotion Detector")
+    print("Press 'q' to quit.")
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                print("Failed to grab frame. Exiting...")
+                break
+
+            cv2.imshow("Emotion Detector", frame)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                print("Exiting...")
+                break
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+
+        # Clean up the signal file
+        if os.path.exists(SIGNAL_FILE):
+            os.remove(SIGNAL_FILE)
+
 if __name__ == "__main__":
     main()
