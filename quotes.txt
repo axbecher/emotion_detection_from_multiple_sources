@@ -1,0 +1,18 @@
+[happy]
+Happiness is a choice.
+Keep smiling, life is beautiful.
+
+[sad]
+It's okay to feel sad sometimes.
+Every storm runs out of rain.
+
+[angry]
+Calm is a superpower.
+Breathe in, breathe out.
+
+[fear]
+Fear is just a state of mind.
+Feel the fear and do it anyway.
+
+[neutral]
+Stay calm and carry on.
