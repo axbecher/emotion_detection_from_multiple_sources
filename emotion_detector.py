@@ -45,6 +45,29 @@ def open_captures_directory():
     else:  # Linux/Other
         subprocess.run(["xdg-open", captures_path])
 
+
+def apply_face_highlight(frame, region):
+    """Highlight the detected face region for better analysis."""
+    x, y, w, h = region['x'], region['y'], region['w'], region['h']
+    face_roi = frame[y:y + h, x:x + w]
+
+    if face_roi.size == 0:
+        return frame  # Return frame unchanged if region is invalid
+
+    # Ajustare luminozitate și contrast
+    face_roi = cv2.convertScaleAbs(face_roi, alpha=1.3, beta=20)
+
+    # Aplicare Unsharp Mask pentru claritate
+    blurred = cv2.GaussianBlur(face_roi, (0, 0), 3)
+    face_roi = cv2.addWeighted(face_roi, 1.5, blurred, -0.5, 0)
+
+    # Reintegrare în imaginea principală
+    frame[y:y + h, x:x + w] = face_roi
+
+    # Adaugă contur luminos
+    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
+    return frame
+
 def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255)):
     """Draw text with a semi-transparent background."""
     font = cv2.FONT_HERSHEY_SIMPLEX
@@ -53,6 +76,7 @@ def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255,
     box_coords = ((text_x, text_y + 5), (text_x + text_size[0] + 10, text_y - text_size[1] - 5))
     cv2.rectangle(frame, box_coords[0], box_coords[1], (0, 0, 0), cv2.FILLED)
     cv2.putText(frame, text, (text_x + 5, text_y), font, font_scale, color, 1, cv2.LINE_AA)
+
 
 
 def draw_wrapped_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255), max_width=400):
@@ -89,8 +113,14 @@ def draw_wrapped_text_with_background(frame, text, position, font_scale=0.6, col
         y += text_size[1] + 10
 
 
-def draw_face_box_and_emotions(frame, analysis):
-    """Draw face bounding box and display emotion characteristics."""
+def draw_face_box_and_emotions(frame, analysis, emotions_position='right', font_scale=0.5):
+    """
+    Draw face bounding box and display emotion characteristics.
+    :param frame: OpenCV image frame.
+    :param analysis: DeepFace analysis results.
+    :param emotions_position: Position for emotion text ('left' or 'right').
+    :param font_scale: Font scale for the emotion text.
+    """
     for face in analysis:
         region = face.get('region', None)
         if region:
@@ -99,17 +129,32 @@ def draw_face_box_and_emotions(frame, analysis):
 
             # Display dominant emotion
             dominant_emotion = face.get('dominant_emotion', 'unknown')
-            draw_text_with_background(frame, f"Emotion: {dominant_emotion}", (x, y - 10), 0.7, (0, 255, 0))
+            draw_text_with_background(frame, f"Emotion: {dominant_emotion}", (x, y - 10), font_scale, (0, 255, 0))
 
             # Display emotion percentages
             emotions = face.get('emotion', {})
             sorted_emotions = sorted(emotions.items(), key=lambda x: x[1], reverse=True)
 
-            y_offset = y + h + 20
-            for emotion, score in sorted_emotions[:5]:
-                draw_text_with_background(frame, f"{emotion.capitalize()}: {score:.1f}%", (x, y_offset), 0.6)
-                y_offset += 30
+            # Ajustarea poziției pentru procentaje
+            if emotions_position == 'right':
+                x_offset = x + w + 10
+                y_offset = y
+            else:  # 'left'
+                x_offset = x - 150 if x - 150 > 0 else 10  # Asigurăm că textul rămâne în cadru
+                y_offset = y
 
+            # Calculăm dimensiunea textului pentru o spațiere corectă
+            text_height = cv2.getTextSize("Test", cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)[0][1]
+            line_spacing = text_height + 12  # Spațiere suplimentară pentru claritate
+
+            for emotion, score in sorted_emotions[:5]:
+                draw_text_with_background(
+                    frame,
+                    f"{emotion.capitalize()}: {score:.1f}%",
+                    (x_offset, y_offset),
+                    font_scale
+                )
+                y_offset += line_spacing  # Creștem cu spațierea calculată
 
 def main():
     quotes = load_quotes()
@@ -139,16 +184,33 @@ def main():
                 print(f"Image captured and saved as {filename}. Analyzing emotion...")
 
                 try:
+                    # Analiza emoțiilor
                     analysis = DeepFace.analyze(img_path=filename, actions=['emotion'], enforce_detection=False)
                     if isinstance(analysis, list):
                         analysis = analysis[0]
 
+                    # Evidențiere față
+                    frame = apply_face_highlight(frame, analysis['region'])
                     draw_face_box_and_emotions(frame, [analysis])
 
+                    # Obținerea emoției dominante
                     dominant_emotion = analysis.get('dominant_emotion', 'unknown')
-                    quote = get_quote(dominant_emotion, quotes)
+                    print(f"Detected emotion: {dominant_emotion}")
 
-                    draw_wrapped_text_with_background(frame, quote, (10, 40), 0.8, (0, 255, 255), max_width=frame.shape[1] - 20)
+                    # Generarea și afișarea citatului corespunzător emoției
+                    quote = get_quote(dominant_emotion, quotes)
+                    print(f"Displayed quote: {quote}")
+
+                    # Afișarea citatului în partea de sus
+                    draw_wrapped_text_with_background(
+                        frame,
+                        quote,
+                        (10, 40),  # Poziționare în partea de sus
+                        font_scale=0.7,
+                        color=(0, 255, 255),
+                        max_width=frame.shape[1] - 20
+                    )
+
                     cv2.imshow("Emotion Detector", frame)
                     cv2.waitKey(5000)
 
@@ -166,8 +228,6 @@ def main():
         cap.release()
         cv2.destroyAllWindows()
         open_captures_directory()
-
-
 
 if __name__ == "__main__":
     main()
