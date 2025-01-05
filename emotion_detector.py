@@ -9,6 +9,16 @@ import random
 # Ensure the "captures" directory exists
 os.makedirs("captures", exist_ok=True)
 
+SIGNAL_FILE = "camera_ready.signal"
+
+def setup_camera_signal():
+    """Creates a signal file to indicate the camera is ready."""
+    if os.path.exists(SIGNAL_FILE):
+        os.remove(SIGNAL_FILE)
+
+    with open(SIGNAL_FILE, "w") as f:
+        f.write("Camera is ready")
+
 def load_quotes(file_path="quotes.txt"):
     """Load quotes from a text file into a dictionary categorized by emotion."""
     quotes = {}
@@ -157,6 +167,9 @@ def draw_face_box_and_emotions(frame, analysis, emotions_position='right', font_
                 y_offset += line_spacing  # Creștem cu spațierea calculată
 
 def main():
+    # Setup camera signal
+    setup_camera_signal()
+
     quotes = load_quotes()
     cap = cv2.VideoCapture(0)
     cv2.namedWindow("Emotion Detector")
@@ -184,28 +197,28 @@ def main():
                 print(f"Image captured and saved as {filename}. Analyzing emotion...")
 
                 try:
-                    # Analiza emoțiilor
+                    # Perform emotion analysis using DeepFace
                     analysis = DeepFace.analyze(img_path=filename, actions=['emotion'], enforce_detection=False)
                     if isinstance(analysis, list):
                         analysis = analysis[0]
 
-                    # Evidențiere față
+                    # Highlight the detected face
                     frame = apply_face_highlight(frame, analysis['region'])
                     draw_face_box_and_emotions(frame, [analysis])
 
-                    # Obținerea emoției dominante
+                    # Get the dominant emotion
                     dominant_emotion = analysis.get('dominant_emotion', 'unknown')
                     print(f"Detected emotion: {dominant_emotion}")
 
-                    # Generarea și afișarea citatului corespunzător emoției
+                    # Generate and display a quote based on the detected emotion
                     quote = get_quote(dominant_emotion, quotes)
                     print(f"Displayed quote: {quote}")
 
-                    # Afișarea citatului în partea de sus
+                    # Display the quote at the top of the window
                     draw_wrapped_text_with_background(
                         frame,
                         quote,
-                        (10, 40),  # Poziționare în partea de sus
+                        (10, 40),  # Position at the top
                         font_scale=0.7,
                         color=(0, 255, 255),
                         max_width=frame.shape[1] - 20
@@ -227,54 +240,13 @@ def main():
     finally:
         cap.release()
         cv2.destroyAllWindows()
-        open_captures_directory()
-
-if __name__ == "__main__":
-    main()
-
-
-
-# Identificarea camerei pentru loading UI
-
-SIGNAL_FILE = "camera_ready.signal"
-
-def main():
-    # Ensure the signal file is removed before starting
-    if os.path.exists(SIGNAL_FILE):
-        os.remove(SIGNAL_FILE)
-
-    cap = cv2.VideoCapture(0)
-    if not cap.isOpened():
-        print("Error: Could not open the camera.")
-        return
-
-    # Create the signal file to notify that the camera is ready
-    with open(SIGNAL_FILE, "w") as f:
-        f.write("Camera is ready")
-
-    cv2.namedWindow("Emotion Detector")
-    print("Press 'q' to quit.")
-
-    try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to grab frame. Exiting...")
-                break
-
-            cv2.imshow("Emotion Detector", frame)
-
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                print("Exiting...")
-                break
-    finally:
-        cap.release()
-        cv2.destroyAllWindows()
 
         # Clean up the signal file
         if os.path.exists(SIGNAL_FILE):
             os.remove(SIGNAL_FILE)
+
+        open_captures_directory()
+
 
 if __name__ == "__main__":
     main()
