@@ -5,12 +5,16 @@ import threading
 import subprocess
 import time
 import os
+import signal
 
 SIGNAL_FILE = "camera_ready.signal"
+processes = []  # Keep track of subprocesses
+child_windows = []  # Keep track of child windows
 
 def show_custom_messagebox(title, message, buttons):
     """Display a custom messagebox styled to match the app."""
     custom_box = tk.Toplevel(root)
+    child_windows.append(custom_box)  # Track child window
     custom_box.title(title)
     custom_box.geometry("400x250")
     custom_box.configure(bg="#102542")
@@ -39,6 +43,34 @@ def show_custom_messagebox(title, message, buttons):
     custom_box.grab_set()
     root.wait_window(custom_box)
 
+def terminate_all_processes():
+    """Terminate all running subprocesses."""
+    for process in processes:
+        if process.poll() is None:  # Check if process is still running
+            process.terminate()  # Terminate process
+
+def close_all_child_windows():
+    """Close all child windows."""
+    for window in child_windows:
+        if window.winfo_exists():
+            window.destroy()
+
+def on_closing():
+    """Handle the application close event."""
+    def confirm_exit():
+        terminate_all_processes()  # Terminate subprocesses
+        close_all_child_windows()  # Close child windows
+        root.destroy()  # Exit main application
+
+    def cancel_exit():
+        pass  # Do nothing, just return to the main screen
+
+    show_custom_messagebox(
+        "Exit Application",
+        "Do you want to quit the application?",
+        [("Yes", confirm_exit), ("No", cancel_exit)]
+    )
+
 def show_permission_dialog():
     """Show a dialog asking for permission to start the camera."""
     def agree():
@@ -63,6 +95,7 @@ def start_camera():
 
     # Start the emotion_detector.py script
     process = subprocess.Popen(["python", "emotion_detector.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    processes.append(process)  # Track the process
 
     # Monitor the signal file in a separate thread
     threading.Thread(target=monitor_camera_ready, args=(process,), daemon=True).start()
@@ -78,6 +111,7 @@ def process_photos():
     """Run the photo emotion analysis script and notify the user."""
     try:
         process = subprocess.Popen(["python", "photos.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        processes.append(process)  # Track the process
         show_custom_messagebox(
             "Photo Analysis",
             "The photo analysis script is running. Please wait for it to complete.",
@@ -99,20 +133,6 @@ def view_captures(folder_name):
         os.startfile(folder_name)  # Open folder (Windows-specific)
     except Exception as e:
         show_custom_messagebox("Error", f"Failed to open the folder. Error: {str(e)}", [("OK", lambda: None)])
-
-def on_closing():
-    """Handle the application close event."""
-    def confirm_exit():
-        root.destroy()
-
-    def cancel_exit():
-        pass  # Do nothing, just return to the main screen
-
-    show_custom_messagebox(
-        "Exit Application",
-        "Do you want to quit the application?",
-        [("Yes", confirm_exit), ("No", cancel_exit)]
-    )
 
 # Create the main window
 root = tk.Tk()
