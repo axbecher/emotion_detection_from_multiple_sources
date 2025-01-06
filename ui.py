@@ -6,6 +6,8 @@ import subprocess
 import time
 import os
 import signal
+import cv2 
+import logging
 
 SIGNAL_FILE = "camera_ready.signal"
 processes = []  # Keep track of subprocesses
@@ -85,27 +87,65 @@ def show_permission_dialog():
         [("Yes", agree), ("No", disagree)]
     )
 
+import cv2  # Import OpenCV library
+
 def start_camera():
-    """Run the emotion detector script and notify the user."""
+    """Start camera and check readiness."""
+    camera_index = 0
+    cap = cv2.VideoCapture(camera_index)
+
+    if not cap.isOpened():
+        show_custom_messagebox(
+            "Camera In Use",
+            "The camera is being used by another application. Close other applications and try again.",
+            [("OK", lambda: None)]
+        )
+        return
+
+    ret, _ = cap.read()
+    cap.release()
+
+    if not ret:
+        show_custom_messagebox(
+            "Camera In Use",
+            "The camera isn't available. It may be in use by another application.",
+            [("OK", lambda: None)]
+        )
+        return
+
     if os.path.exists(SIGNAL_FILE):
         show_custom_messagebox("Camera Ready", "The camera is already ready to use.", [("OK", lambda: None)])
         return
 
     show_custom_messagebox("Camera Starting", "The camera will start shortly. Please wait.", [("OK", lambda: None)])
-
-    # Start the emotion_detector.py script
     process = subprocess.Popen(["python", "emotion_detector.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    processes.append(process)  # Track the process
+    processes.append(process)
 
-    # Monitor the signal file in a separate thread
     threading.Thread(target=monitor_camera_ready, args=(process,), daemon=True).start()
 
 def monitor_camera_ready(process):
-    """Monitor the signal file to detect when the camera is ready."""
+    """Monitor the camera readiness signal."""
     while not os.path.exists(SIGNAL_FILE):
-        time.sleep(0.1)
-    if process.poll() is None:  # Check if the process is still running
-        show_custom_messagebox("Camera Ready", "The camera was turned off. If you want to see the emotions again, please press the Live Emotion Analysis button.", [("OK", lambda: None)])
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            if process.poll() is None:
+                process.terminate()
+            show_custom_messagebox(
+                "Camera In Use",
+                "The camera is unavailable. Please close other applications using the camera and try again.",
+                [("OK", lambda: None)]
+            )
+            return
+        cap.release()
+        time.sleep(0.5)
+
+    if os.path.exists(SIGNAL_FILE):
+        if process.poll() is None:
+            show_custom_messagebox(
+                "Camera Ready",
+                "The camera is ready. You can now start live emotion analysis.",
+                [("OK", lambda: None)]
+            )
 
 def process_photos():
     """Run the photo emotion analysis script and notify the user."""
@@ -187,7 +227,7 @@ def add_description(canvas):
     )
 
 def add_footer(canvas):
-    footer_text = "Vision Cube © 2025 | Crafted by Vision Cube Team"
+    footer_text = "Crafted by Vision Cube Team © 2025"
     bg_rect = canvas.create_rectangle(50, 570, 750, 600, fill="#102542", outline="")
     canvas.create_text(
         400, 585, text=footer_text, font=("Orbitron", 12), fill="#b0c4de", anchor="center"
