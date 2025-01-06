@@ -8,12 +8,24 @@ import os
 
 SIGNAL_FILE = "camera_ready.signal"
 
+# Listă globală pentru a păstra referințele la ferestrele Toplevel
+active_warnings = []
+
 def show_custom_messagebox(title, message, buttons):
     """Display a custom messagebox styled to match the app."""
+    global active_warnings
+
+    # Ascunde toate ferestrele active
+    for warning_window in active_warnings:
+        warning_window.withdraw()
+
     custom_box = tk.Toplevel(root)
     custom_box.title(title)
     custom_box.geometry("400x250")
     custom_box.configure(bg="#102542")
+
+    # Adaugă fereastra în lista globală
+    active_warnings.append(custom_box)
 
     # Add title and message
     label_title = tk.Label(custom_box, text=title, font=("Orbitron", 16, "bold"), fg="#00eaff", bg="#102542")
@@ -30,7 +42,7 @@ def show_custom_messagebox(title, message, buttons):
         ttk.Button(
             button_frame,
             text=button_text,
-            command=lambda c=button_command: [custom_box.destroy(), c() if c else None],
+            command=lambda c=button_command: [close_warning(custom_box), c() if c else None],
             style="Custom.TButton"
         ).pack(side="left", padx=10)
 
@@ -38,6 +50,24 @@ def show_custom_messagebox(title, message, buttons):
     custom_box.transient(root)
     custom_box.grab_set()
     root.wait_window(custom_box)
+
+def close_warning(warning_window):
+    """Close a specific warning window and remove it from the list."""
+    global active_warnings
+    if warning_window in active_warnings:
+        active_warnings.remove(warning_window)
+        warning_window.destroy()
+
+    # Afișează din nou ferestrele ascunse
+    for warning_window in active_warnings:
+        warning_window.deiconify()
+
+def close_all_warnings():
+    """Close all active warning windows."""
+    global active_warnings
+    for warning_window in active_warnings:
+        warning_window.destroy()
+    active_warnings.clear()
 
 def show_permission_dialog():
     """Show a dialog asking for permission to start the camera."""
@@ -55,6 +85,7 @@ def show_permission_dialog():
 
 def start_camera():
     """Run the emotion detector script and notify the user."""
+    close_all_warnings()  # Închide toate ferestrele înainte de a continua
     if os.path.exists(SIGNAL_FILE):
         show_custom_messagebox("Camera Ready", "The camera is already ready to use.", [("OK", lambda: None)])
         return
@@ -76,6 +107,7 @@ def monitor_camera_ready(process):
 
 def process_photos():
     """Run the photo emotion analysis script and notify the user."""
+    close_all_warnings()  # Închide toate ferestrele înainte de a continua
     try:
         process = subprocess.Popen(["python", "photos.py"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         show_custom_messagebox(
@@ -167,7 +199,7 @@ def add_description(canvas):
     )
 
 def add_footer(canvas):
-    footer_text = "Vision Cube © 2025 | Crafted by Vision Cube Team"
+    footer_text = "Crafted by Vision Cube Team © 2025"
     bg_rect = canvas.create_rectangle(50, 570, 750, 600, fill="#102542", outline="")
     canvas.create_text(
         400, 585, text=footer_text, font=("Orbitron", 12), fill="#b0c4de", anchor="center"
@@ -183,6 +215,13 @@ style = ttk.Style()
 style.theme_use("clam")
 style.configure("Custom.TButton", font=("Orbitron", 14), padding=10, background="#1b3b5a", foreground="#00eaff", borderwidth=4)
 style.map("Custom.TButton", background=[("active", "#28516b")], relief=[("active", "sunken")])
+
+# Add styles for live and photo captures with yellow accents
+style.configure("Live.TButton", font=("Orbitron", 14), padding=10, background="#FFD700", foreground="#102542", borderwidth=4)
+style.map("Live.TButton", background=[("active", "#FFC300")], relief=[("active", "sunken")])
+
+style.configure("Photo.TButton", font=("Orbitron", 14), padding=10, background="#FFD700", foreground="#102542", borderwidth=4)
+style.map("Photo.TButton", background=[("active", "#FFC300")], relief=[("active", "sunken")])
 
 # Add a transparent overlay label
 header_label = tk.Label(root, text="Face Expression Recognition", font=("Orbitron", 30, "bold"), fg="#00eaff", bg="#102542", bd=12, relief="ridge")
@@ -202,9 +241,9 @@ photo_button.place(relx=0.7, rely=0.5, anchor="center")
 # Button for viewing video captures
 video_captures_button = ttk.Button(
     root,
-    text="View Video Captures",
+    text="View Live Captures",
     command=lambda: view_captures("captures"),
-    style="Custom.TButton"
+    style="Live.TButton"  # Apply Live style
 )
 video_captures_button.place(relx=0.3, rely=0.7, anchor="center")
 
@@ -213,7 +252,7 @@ photo_captures_button = ttk.Button(
     root,
     text="View Photo Captures",
     command=lambda: view_captures("photos_captures"),
-    style="Custom.TButton"
+    style="Photo.TButton"  # Apply Photo style
 )
 photo_captures_button.place(relx=0.7, rely=0.7, anchor="center")
 
