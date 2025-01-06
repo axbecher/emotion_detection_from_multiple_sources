@@ -5,6 +5,12 @@ from datetime import datetime
 import platform
 import subprocess
 import random
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
+import threading
+import ttkbootstrap as tb
+from ttkbootstrap.constants import *
 
 # Ensure the "captures" directory exists
 os.makedirs("captures", exist_ok=True)
@@ -12,18 +18,14 @@ os.makedirs("captures", exist_ok=True)
 SIGNAL_FILE = "camera_ready.signal"
 
 def setup_camera_signal():
-    """Creates a signal file to indicate the camera is ready."""
     if os.path.exists(SIGNAL_FILE):
         os.remove(SIGNAL_FILE)
-
     with open(SIGNAL_FILE, "w") as f:
         f.write("Camera is ready")
 
 def load_quotes(file_path="quotes.txt"):
-    """Load quotes from a text file into a dictionary categorized by emotion."""
     quotes = {}
     current_category = None
-
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
@@ -40,45 +42,32 @@ def load_quotes(file_path="quotes.txt"):
     return quotes
 
 def get_quote(emotion, quotes_dict):
-    """Retrieve a random quote based on the detected emotion."""
     if emotion in quotes_dict and quotes_dict[emotion]:
         return random.choice(quotes_dict[emotion])
-    return "You are amazing!"  # Default quote
+    return "You are amazing!"
 
 def open_captures_directory():
-    """Open the 'captures' directory in the default file explorer."""
     captures_path = os.path.abspath("captures")
     if platform.system() == "Windows":
         os.startfile(captures_path)
-    elif platform.system() == "Darwin":  # macOS
+    elif platform.system() == "Darwin":
         subprocess.run(["open", captures_path])
-    else:  # Linux/Other
+    else:
         subprocess.run(["xdg-open", captures_path])
 
 def apply_face_highlight(frame, region):
-    """Highlight the detected face region for better analysis."""
     x, y, w, h = region['x'], region['y'], region['w'], region['h']
     face_roi = frame[y:y + h, x:x + w]
-
     if face_roi.size == 0:
-        return frame  # Return frame unchanged if region is invalid
-
-    # Adjust brightness and contrast
+        return frame
     face_roi = cv2.convertScaleAbs(face_roi, alpha=1.3, beta=20)
-
-    # Apply Unsharp Mask for clarity
     blurred = cv2.GaussianBlur(face_roi, (0, 0), 3)
     face_roi = cv2.addWeighted(face_roi, 1.5, blurred, -0.5, 0)
-
-    # Reintegration into the main image
     frame[y:y + h, x:x + w] = face_roi
-
-    # Add bright outline
     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
     return frame
 
 def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255), bg_color=(0, 0, 0), thickness=1):
-    """Draw text with a semi-transparent background."""
     font = cv2.FONT_HERSHEY_SIMPLEX
     text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
     text_x, text_y = position
@@ -87,7 +76,6 @@ def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255,
     cv2.putText(frame, text, (text_x + 5, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
 
 def draw_wrapped_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255), max_width=400):
-    """Draw wrapped text with a semi-transparent background."""
     font = cv2.FONT_HERSHEY_SIMPLEX
     words = text.split(' ')
     lines = []
@@ -145,76 +133,136 @@ def draw_face_box_and_emotions(image, analysis):
 
             draw_text_with_background(image, f"Stress Grade: {stress_grade:.1f}%", (x, y_offset), font_scale=font_scale, color=(255, 165, 0))
 
-def main():
-    setup_camera_signal()
-    quotes = load_quotes()
-    cap = cv2.VideoCapture(0)
-    cv2.namedWindow("Emotion Detector")
-    print("Press 's' to scan your emotion and 'q' to quit.")
-
+def scan_emotion_live(frame, quotes):
     try:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Failed to grab frame. Exiting...")
-                break
+        analysis = DeepFace.analyze(img_path=frame, actions=['emotion'], enforce_detection=False)
+        if isinstance(analysis, list):
+            analysis = analysis[0]
 
-            cv2.imshow("Emotion Detector", frame)
+        dominant_emotion = analysis.get('dominant_emotion', 'unknown')
 
-            if cv2.getWindowProperty("Emotion Detector", cv2.WND_PROP_VISIBLE) < 1:
-                print("Window closed. Exiting...")
-                break
+        if 'region' in analysis:
+            frame = apply_face_highlight(frame, analysis['region'])
+        draw_face_box_and_emotions(frame, [analysis])
 
-            key = cv2.waitKey(1) & 0xFF
+        quote = get_quote(dominant_emotion, quotes)
+        draw_wrapped_text_with_background(frame, quote, (10, 40), font_scale=0.7, color=(0, 255, 255))
 
-            if key == ord('s'):
-                try:
-                    temp_filename = "captures/temp.jpg"
-                    cv2.imwrite(temp_filename, frame)
+    except Exception as e:
+        print(f"Error detecting emotion: {e}")
 
-                    analysis = DeepFace.analyze(img_path=temp_filename, actions=['emotion'], enforce_detection=False)
-                    if isinstance(analysis, list):
-                        analysis = analysis[0]
+import ttkbootstrap as tb
+from ttkbootstrap.constants import *
 
-                    dominant_emotion = analysis.get('dominant_emotion', 'unknown')
+def start_camera_ui():
+    def update_frame():
+        nonlocal frame_original, scanning
+        if not running or scanning:
+            return  # Stop updating frames when scanning
 
-                    if 'region' in analysis:
-                        frame = apply_face_highlight(frame, analysis['region'])
-                    draw_face_box_and_emotions(frame, [analysis])
+        ret, frame = cap.read()
+        if not ret:
+            return
 
-                    quote = get_quote(dominant_emotion, quotes)
+        frame_original = frame.copy()
 
-                    draw_wrapped_text_with_background(frame, quote, (10, 40), font_scale=0.7, color=(0, 255, 255), max_width=frame.shape[1] - 20)
+        # Show the normal live feed
+        frame_rgb = cv2.cvtColor(frame_original, cv2.COLOR_BGR2RGB)
+        frame_pil = Image.fromarray(frame_rgb)
+        frame_tk = ImageTk.PhotoImage(image=frame_pil)
 
-                    # Generate a timestamped filename
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    safe_emotion_name = dominant_emotion.replace(" ", "_").lower()
-                    filename = f"captures/{safe_emotion_name}_{timestamp}.jpg"
-                    cv2.imwrite(filename, frame)
-                    print(f"Processed image saved as {filename}.")
+        video_label.imgtk = frame_tk
+        video_label.configure(image=frame_tk)
 
+        # Update frame every 15ms (~60 FPS)
+        video_label.after(15, update_frame)
 
-                    os.remove(temp_filename)
+    def on_scan():
+        nonlocal scanning, frame_original
+        if not scanning and frame_original is not None:
+            scanning = True
 
-                    cv2.imshow("Emotion Detector", frame)
-                    cv2.waitKey(5000)
+            # Analyze emotions on the current frame
+            frame_to_analyze = frame_original.copy()
+            try:
+                scan_emotion_live(frame_to_analyze, quotes)
 
-                except Exception as e:
-                    print(f"Error detecting emotion: {e}")
-                    draw_text_with_background(frame, "Error detecting emotion", (10, 30), 0.8, (0, 0, 255))
-                    cv2.imshow("Emotion Detector", frame)
-                    cv2.waitKey(3000)
+                # Save the processed frame
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"captures/emotion_capture_{timestamp}.jpg"
+                cv2.imwrite(filename, frame_to_analyze)
+                print(f"Capture saved as {filename}")
 
-            elif key == ord('q'):
-                print("Exiting...")
-                break
+            except Exception as e:
+                print(f"Error during emotion detection: {e}")
 
-    finally:
+            # Display the processed frame with emotions
+            frame_rgb = cv2.cvtColor(frame_to_analyze, cv2.COLOR_BGR2RGB)
+            frame_pil = Image.fromarray(frame_rgb)
+            frame_tk = ImageTk.PhotoImage(image=frame_pil)
+
+            video_label.imgtk = frame_tk
+            video_label.configure(image=frame_tk)
+
+            scan_button.config(state=DISABLED)
+            reset_button.config(state=NORMAL)
+
+    def on_reset():
+        nonlocal scanning
+        scanning = False
+        scan_button.config(state=NORMAL)
+        reset_button.config(state=DISABLED)
+        update_frame()  # Resume live feed
+
+    def on_quit():
+        nonlocal running
+        running = False
         cap.release()
-        cv2.destroyAllWindows()
-        if os.path.exists(SIGNAL_FILE):
-            os.remove(SIGNAL_FILE)
-        open_captures_directory()
+        root.destroy()
+
+    # Initialize the root window
+    root = tb.Window(themename="superhero")  # Futuristic ttkbootstrap theme
+    root.title("Live Emotion Detector")
+    root.geometry("900x700")
+    root.config(bg="#1b1b1b")  # Dark futuristic background
+
+    # Video frame
+    video_frame = tb.Frame(root, bootstyle="dark")
+    video_frame.pack(fill=BOTH, expand=True, padx=20, pady=20)
+
+    video_label = tb.Label(video_frame, text="Initializing camera...", anchor="center", bootstyle="secondary-inverse")
+    video_label.pack(fill=BOTH, expand=True, padx=10, pady=10)
+
+    # Button frame
+    button_frame = tb.Frame(root, bootstyle="dark")
+    button_frame.pack(side=BOTTOM, fill=X, pady=20)
+
+    # Styled buttons
+    scan_button = tb.Button(button_frame, text="Scan", command=on_scan, bootstyle="primary-outline", width=10)
+    scan_button.pack(side=LEFT, padx=15, pady=5)
+
+    reset_button = tb.Button(button_frame, text="Reset", command=on_reset, state=DISABLED, bootstyle="warning-outline", width=10)
+    reset_button.pack(side=LEFT, padx=15, pady=5)
+
+    quit_button = tb.Button(button_frame, text="Quit", command=on_quit, bootstyle="danger-outline", width=10)
+    quit_button.pack(side=LEFT, padx=15, pady=5)
+
+    # Camera initialization
+    cap = cv2.VideoCapture(0)
+    quotes = load_quotes()
+    running = True
+    scanning = False
+    frame_original = None
+
+    update_frame()  # Start updating frames
+    root.mainloop()
+
+
+
+
+
+
 
 if __name__ == "__main__":
-    main()
+    setup_camera_signal()
+    start_camera_ui()
