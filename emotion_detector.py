@@ -1,3 +1,4 @@
+
 import cv2
 from deepface import DeepFace
 import os
@@ -55,7 +56,6 @@ def open_captures_directory():
     else:  # Linux/Other
         subprocess.run(["xdg-open", captures_path])
 
-
 def apply_face_highlight(frame, region):
     """Highlight the detected face region for better analysis."""
     x, y, w, h = region['x'], region['y'], region['w'], region['h']
@@ -78,16 +78,14 @@ def apply_face_highlight(frame, region):
     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
     return frame
 
-def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255)):
+def draw_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255), bg_color=(0, 0, 0), thickness=1):
     """Draw text with a semi-transparent background."""
     font = cv2.FONT_HERSHEY_SIMPLEX
-    text_size = cv2.getTextSize(text, font, font_scale, 1)[0]
+    text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
     text_x, text_y = position
     box_coords = ((text_x, text_y + 5), (text_x + text_size[0] + 10, text_y - text_size[1] - 5))
-    cv2.rectangle(frame, box_coords[0], box_coords[1], (0, 0, 0), cv2.FILLED)
-    cv2.putText(frame, text, (text_x + 5, text_y), font, font_scale, color, 1, cv2.LINE_AA)
-
-
+    cv2.rectangle(frame, box_coords[0], box_coords[1], bg_color, cv2.FILLED)
+    cv2.putText(frame, text, (text_x + 5, text_y), font, font_scale, color, thickness, cv2.LINE_AA)
 
 def draw_wrapped_text_with_background(frame, text, position, font_scale=0.6, color=(255, 255, 255), max_width=400):
     """
@@ -122,49 +120,48 @@ def draw_wrapped_text_with_background(frame, text, position, font_scale=0.6, col
         cv2.putText(frame, line, (x + 5, y), font, font_scale, color, 1, cv2.LINE_AA)
         y += text_size[1] + 10
 
-
-def draw_face_box_and_emotions(frame, analysis, emotions_position='right', font_scale=0.5):
-    """
-    Draw face bounding box and display emotion characteristics.
-    :param frame: OpenCV image frame.
-    :param analysis: DeepFace analysis results.
-    :param emotions_position: Position for emotion text ('left' or 'right').
-    :param font_scale: Font scale for the emotion text.
-    """
+def draw_face_box_and_emotions(image, analysis):
+    """Draw bounding boxes, display emotions, and stress grade on the image."""
     for face in analysis:
         region = face.get('region', None)
         if region:
             x, y, w, h = region['x'], region['y'], region['w'], region['h']
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
-            # Display dominant emotion
+            # Draw bounding box with semi-transparent overlay
+            overlay = image.copy()
+            cv2.rectangle(overlay, (x, y), (x + w, y + h), (0, 255, 0), -1)
+            alpha = 0.3
+            cv2.addWeighted(overlay, alpha, image, 1 - alpha, 0, image)
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+            # Fixed font scale to ensure all text fits
+            font_scale = 0.6
+            thickness = 1
+
+            # Dominant emotion and emotions list
             dominant_emotion = face.get('dominant_emotion', 'unknown')
-            draw_text_with_background(frame, f"Emotion: {dominant_emotion}", (x, y - 10), font_scale, (0, 255, 0))
-
-            # Display emotion percentages
             emotions = face.get('emotion', {})
             sorted_emotions = sorted(emotions.items(), key=lambda x: x[1], reverse=True)
 
-            # Ajustarea poziției pentru procentaje
-            if emotions_position == 'right':
-                x_offset = x + w + 10
-                y_offset = y
-            else:  # 'left'
-                x_offset = x - 150 if x - 150 > 0 else 10  # Asigurăm că textul rămâne în cadru
-                y_offset = y
+            # Calculate stress grade (sum of negative emotions)
+            negative_emotions = ["angry", "disgust", "fear", "sad"]
+            stress_grade = sum(emotions.get(emotion, 0) for emotion in negative_emotions)
+            stress_grade = min(max(stress_grade, 0), 100)  # Clamp between 0 and 100
 
-            # Calculăm dimensiunea textului pentru o spațiere corectă
-            text_height = cv2.getTextSize("Test", cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)[0][1]
-            line_spacing = text_height + 12  # Spațiere suplimentară pentru claritate
+            # Draw dominant emotion
+            draw_text_with_background(image, f"Dominant: {dominant_emotion}", (x, y - 30),
+                                      font_scale=font_scale, color=(0, 255, 0), bg_color=(0, 0, 0), thickness=thickness)
 
-            for emotion, score in sorted_emotions[:5]:
-                draw_text_with_background(
-                    frame,
-                    f"{emotion.capitalize()}: {score:.1f}%",
-                    (x_offset, y_offset),
-                    font_scale
-                )
-                y_offset += line_spacing  # Creștem cu spațierea calculată
+            # Draw each emotion percentage
+            y_offset = y + h + 20
+            for emotion, score in sorted_emotions:
+                draw_text_with_background(image, f"{emotion.capitalize()}: {score:.1f}%", (x, y_offset),
+                                          font_scale=font_scale, color=(255, 255, 255), bg_color=(50, 50, 50), thickness=thickness)
+                y_offset += int(25 * font_scale)
+
+            # Draw stress grade
+            draw_text_with_background(image, f"Stress Grade: {stress_grade:.1f}%", (x, y_offset),
+                                      font_scale=font_scale, color=(255, 165, 0), bg_color=(50, 50, 50), thickness=thickness)
 
 def main():
     # Setup camera signal
@@ -191,30 +188,38 @@ def main():
             key = cv2.waitKey(1) & 0xFF
 
             if key == ord('s'):
-                timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                filename = f"captures/{timestamp}.jpg"
-                cv2.imwrite(filename, frame)
-                print(f"Image captured and saved as {filename}. Analyzing emotion...")
-
                 try:
+                    # Save the image temporarily for analysis
+                    temp_filename = "captures/temp.jpg"
+                    cv2.imwrite(temp_filename, frame)
+                    print(f"Image captured and temporarily saved as {temp_filename}. Analyzing emotion...")
+
                     # Perform emotion analysis using DeepFace
-                    analysis = DeepFace.analyze(img_path=filename, actions=['emotion'], enforce_detection=False)
+                    analysis = DeepFace.analyze(img_path=temp_filename, actions=['emotion'], enforce_detection=False)
                     if isinstance(analysis, list):
                         analysis = analysis[0]
-
-                    # Highlight the detected face
-                    frame = apply_face_highlight(frame, analysis['region'])
-                    draw_face_box_and_emotions(frame, [analysis])
 
                     # Get the dominant emotion
                     dominant_emotion = analysis.get('dominant_emotion', 'unknown')
                     print(f"Detected emotion: {dominant_emotion}")
 
+                    # Save the image with the emotion as the filename
+                    safe_emotion_name = dominant_emotion.replace(" ", "_").lower()  # Make filename safe
+                    filename = f"captures/{safe_emotion_name}.jpg"
+                    cv2.imwrite(filename, frame)
+                    print(f"Image saved as {filename}.")
+
+                    # Clean up the temporary file
+                    os.remove(temp_filename)
+
+                    # Additional processing (highlight, draw emotions, etc.)
+                    frame = apply_face_highlight(frame, analysis['region'])
+                    draw_face_box_and_emotions(frame, [analysis])
+
                     # Generate and display a quote based on the detected emotion
                     quote = get_quote(dominant_emotion, quotes)
                     print(f"Displayed quote: {quote}")
 
-                    # Display the quote at the top of the window
                     draw_wrapped_text_with_background(
                         frame,
                         quote,
@@ -246,7 +251,6 @@ def main():
             os.remove(SIGNAL_FILE)
 
         open_captures_directory()
-
 
 if __name__ == "__main__":
     main()
