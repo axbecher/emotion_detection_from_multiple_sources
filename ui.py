@@ -227,7 +227,7 @@ def add_description(canvas):
     )
 
 def open_github_repo():
-    url = "https://github.com/axbecher/emotion_detection_from_multiple_sources"
+    url = "https://github.com/axbecher/emotion_detection_from_multiple_sources?tab=readme-ov-file#-contributors"
     if os.name == "nt":  # Windows
         os.startfile(url)
     elif os.name == "posix":  # macOS or Linux
