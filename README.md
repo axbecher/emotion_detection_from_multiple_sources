@@ -1,6 +1,6 @@
 # 📸 **Emotion Detection from Multiple Sources**
 
-Welcome to the **Emotion Detection Application** – a tool for identifying and analyzing emotions from images, videos, and live camera feeds. This project is built with an intuitive interface and powerful emotion recognition capabilities.
+Welcome to the **Emotion Detection Application** – a tool for identifying and analyzing emotions from images and live camera feeds. This project is built with an intuitive interface and powerful emotion recognition capabilities.
 
 ---
 
@@ -34,5 +34,29 @@ Check out all dependencies in [requirements.txt](requirements.txt).
 
 ### 📥 **1. Clone the Repository**
 ```bash
-git clone https://github.com/your-repo/emotion-detection.git
+git clone https://github.com/axbecher/emotion_detection_from_multiple_sources
 cd emotion-detection
+
+### 🐍 **2. Install dependencies**
+pip install -r requirements.txt
+
+### 🖥️ **3. Install dependencies**
+python ui.py
+
+🤝 Contributors
+<table>
+  <tbody>
+    <tr>
+      <td align="center"><a href="https://axbecher.com"><img src="https://avatars.githubusercontent.com/u/72851811?v=4" width="100px;" alt="Alexandru Becher"/><br /><sub><b>Alexandru Becher</b></sub></a><br />
+      </td>
+      <td align="center"><a href="https://hurr13ane.com"><img src="https://avatars.githubusercontent.com/u/102989142?v=4" width="100px;" alt="Codruta Lacatus"/><br /><sub><b>Codruta Alexandra Lăcătuș</b></sub></a><br />
+      </td>
+      <td align="center"><a href="https://hurr13ane.com"><img src="https://avatars.githubusercontent.com/u/76591840?v=4" width="100px;" alt="Diana-Maria Iercosan"/><br /><sub><b>Diana-Maria Iercosan</b></sub></a><br />
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+
+
+
