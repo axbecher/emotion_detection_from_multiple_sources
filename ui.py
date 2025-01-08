@@ -226,12 +226,38 @@ def add_description(canvas):
         400, 515, text=description, font=("Orbitron", 14, "italic"), fill="#b0c4de", anchor="center", width=700
     )
 
+def open_github_repo():
+    url = "https://github.com/axbecher/emotion_detection_from_multiple_sources"
+    if os.name == "nt":  # Windows
+        os.startfile(url)
+    elif os.name == "posix":  # macOS or Linux
+        subprocess.Popen(["xdg-open", url])
+
 def add_footer(canvas):
-    footer_text = "Crafted by Vision Cube Team © 2025"
-    bg_rect = canvas.create_rectangle(50, 570, 750, 600, fill="#102542", outline="")
+    footer_text = "Crafted by Vision Cube Team © 2025 |"
+    github_text = "View Github Repo"
+    
+    # Draw background rectangle
+    canvas.create_rectangle(50, 570, 750, 600, fill="#102542", outline="")
+    
+    # Create static footer text
     canvas.create_text(
-        400, 585, text=footer_text, font=("Orbitron", 12), fill="#b0c4de", anchor="center"
+        310, 585, text=footer_text, font=("Orbitron", 12), fill="#b0c4de", anchor="center"
     )
+    
+    # Create clickable Github link
+    github_text_id = canvas.create_text(
+    520, 585, text=github_text, font=("Orbitron", 12, "underline"), fill="#87CEEB", anchor="center"
+)
+    # Bind the Github text to open the URL
+    canvas.tag_bind(github_text_id, "<Button-1>", lambda e: open_github_repo())
+    
+    # Change cursor to hand when hovering over the text
+    canvas.tag_bind(github_text_id, "<Enter>", lambda e: canvas.config(cursor="hand2"))
+    canvas.tag_bind(github_text_id, "<Leave>", lambda e: canvas.config(cursor=""))
+    
+    # Bind the Github text to open the URL
+    canvas.tag_bind(github_text_id, "<Button-1>", lambda e: open_github_repo())
 
 draw_gradient(canvas)
 add_faded_emojis(canvas)

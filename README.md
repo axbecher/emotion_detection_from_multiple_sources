@@ -44,7 +44,7 @@ cd emotion-detection
 ### 🖥️ **3. Install dependencies**
 ```python ui.py```
 
-🤝 Contributors
+### 🤝 Contributors
 <table>
   <tbody>
     <tr>
