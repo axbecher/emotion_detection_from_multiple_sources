@@ -33,7 +33,7 @@ Check out all dependencies in [requirements.txt](requirements.txt).
 ## 💻 **How to Run the Project**
 
 ### 📥 **1. Clone the Repository**
-```bash
+```bash ```
 git clone https://github.com/axbecher/emotion_detection_from_multiple_sources
 cd emotion-detection
 
@@ -49,7 +49,7 @@ python ui.py
     <tr>
       <td align="center"><a href="https://axbecher.com"><img src="https://avatars.githubusercontent.com/u/72851811?v=4" width="100px;" alt="Alexandru Becher"/><br /><sub><b>Alexandru Becher</b></sub></a><br />
       </td>
-      <td align="center"><a href="https://hurr13ane.com"><img src="https://avatars.githubusercontent.com/u/102989142?v=4" width="100px;" alt="Codruta Lacatus"/><br /><sub><b>Codruta Alexandra Lăcătuș</b></sub></a><br />
+      <td align="center"><a href="https://www.linkedin.com/in/codruta-lacatus/"><img src="https://avatars.githubusercontent.com/u/102989142?v=4" width="100px;" alt="Codruta Lacatus"/><br /><sub><b>Codruta Alexandra Lăcătuș</b></sub></a><br />
       </td>
       <td align="center"><a href="https://hurr13ane.com"><img src="https://avatars.githubusercontent.com/u/76591840?v=4" width="100px;" alt="Diana-Maria Iercosan"/><br /><sub><b>Diana-Maria Iercosan</b></sub></a><br />
       </td>
