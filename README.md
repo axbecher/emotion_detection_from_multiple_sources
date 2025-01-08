@@ -34,7 +34,9 @@ Check out all dependencies in [requirements.txt](requirements.txt).
 
 ### 📥 **1. Clone the Repository**
 ```bash ```
+
 git clone https://github.com/axbecher/emotion_detection_from_multiple_sources
+
 cd emotion-detection
 
 ### 🐍 **2. Install dependencies**
