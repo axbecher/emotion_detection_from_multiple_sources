@@ -33,17 +33,16 @@ Check out all dependencies in [requirements.txt](requirements.txt).
 ## 💻 **How to Run the Project**
 
 ### 📥 **1. Clone the Repository**
-```bash ```
-
+```
 git clone https://github.com/axbecher/emotion_detection_from_multiple_sources
-
 cd emotion-detection
+```
 
 ### 🐍 **2. Install dependencies**
-pip install -r requirements.txt
+```pip install -r requirements.txt```
 
 ### 🖥️ **3. Install dependencies**
-python ui.py
+```python ui.py```
 
 🤝 Contributors
 <table>
