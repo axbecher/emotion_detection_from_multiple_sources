@@ -44,6 +44,38 @@ cd emotion-detection
 ### 🖥️ **3. Install dependencies**
 ```python ui.py```
 
+
+## 🖼️ **How the Application Looks & Works**
+
+This section provides a visual walkthrough of the **Emotion Detection Application**. Below are screenshots demonstrating key functionalities:
+
+### **1. Home Screen**
+The home screen offers intuitive navigation options to analyze emotions from live captures or photos.
+![Home Screen](images/home_screen.png)
+
+### **2. Live Emotion Analysis**
+When you select "Live Emotion Analysis," the application requests camera permissions to initiate real-time emotion detection.
+![Camera Permission](images/camera_permission.png)
+![Camera Starting](images/camera_starting.png)
+
+Once the camera is active, the system analyzes your facial expressions, highlighting the detected emotions:
+![Live Emotion Detection](images/live_emotion_detection.png)
+
+### **3. Photo Emotion Analysis**
+You can also analyze static images by selecting "Photo Emotion Analysis" and choosing an image or folder:
+![Photo Emotion Analysis](images/photo_emotion_analysis.png)
+
+The results display the dominant emotion and a breakdown of detected emotions, stress grades, and more:
+![Photo Analysis Results](images/photo_analysis_results.png)
+
+### **4. Saved Captures**
+The application automatically saves analyzed images and results for future reference.  
+Captured images from live analysis are stored in the `captures` folder:
+![Live Captures Folder](images/live_captures_folder.png)
+
+Analyzed photos from the "Photo Emotion Analysis" feature are saved in the `photos_captures` folder:
+![Photo Captures Folder](images/photo_captures_folder.png)
+
 ### 🤝 Contributors
 <table>
   <tbody>
