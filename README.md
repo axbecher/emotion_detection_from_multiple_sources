@@ -59,7 +59,7 @@ When you select "Live Emotion Analysis," the application requests camera permiss
 ![Camera Starting](images/camera_starting.png)
 
 Once the camera is active, the system analyzes your facial expressions, highlighting the detected emotions:
-![Live Emotion Detection](images/live_emotion_detection.png)
+![Live Emotion Detection](images/live_emotion_detection.jpg)
 
 ### **3. Photo Emotion Analysis**
 You can also analyze static images by selecting "Photo Emotion Analysis" and choosing an image or folder:
@@ -71,7 +71,7 @@ The results display the dominant emotion and a breakdown of detected emotions, s
 ### **4. Saved Captures**
 The application automatically saves analyzed images and results for future reference.  
 Captured images from live analysis are stored in the `captures` folder:
-![Live Captures Folder](images/live_captures_folder.png)
+![Live Captures Folder](images/live_captures_folder.jpg)
 
 Analyzed photos from the "Photo Emotion Analysis" feature are saved in the `photos_captures` folder:
 ![Photo Captures Folder](images/photo_captures_folder.png)
