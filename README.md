@@ -73,7 +73,7 @@ Captured images from live analysis are stored in the `captures` folder:
 ![Live Captures Folder](images/live_captures_folder.jpg)
 
 Analyzed photos from the "Photo Emotion Analysis" feature are saved in the `photos_captures` folder:
-![Photo Captures Folder](images/photo_captures_folder.png)
+![Photo Captures Folder](images/photo_captures_folder.jpg)
 
 ### 🤝 Contributors
 <table>
