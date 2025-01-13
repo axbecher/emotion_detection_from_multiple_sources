@@ -24,7 +24,6 @@ This application uses **DeepFace** and **OpenCV** to detect and analyze human em
 - **DeepFace** – Emotion analysis  
 - **Tkinter** – User interface  
 - **Pillow (PIL)** – Image handling  
-- **Flask** (Optional, for web integration)  
 
 Check out all dependencies in [requirements.txt](requirements.txt).
 
